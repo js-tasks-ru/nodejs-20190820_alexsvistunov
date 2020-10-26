@@ -2,80 +2,76 @@ const url = require('url');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
-const {parse} = require('querystring');
+const LimitSizeStream = require('./LimitSizeStream');
 
 const FILE_LIMIT = 1e6;
 
 const server = new http.Server();
 
-const writeFile = (path, data, response) => {
-  fs.writeFile(path, data, {flag: 'wx'}, (err) => {
-    if (err) {
-      response.end(err.message);
-      return;
-    }
-
-    response.statusCode = 201;
-    response.end(`ok!`);
-  });
-};
-
 server.on('request', (req, res) => {
   const pathname = url.parse(req.url).pathname.slice(1);
-
-  const filesDirectoryPath = path.join(__dirname, 'files');
   const filepath = path.join(__dirname, 'files', pathname);
 
   switch (req.method) {
     case 'POST':
+      if (!filepath) {
+        res.statusCode = 404;
+        res.end('File not found');
+        return;
+      }
+
       if (pathname.includes('/')) {
         res.statusCode = 400;
-        res.end('forbidden');
+        res.end('Nested paths are forbidden');
         return;
       }
 
       if (+req.headers['content-length'] > FILE_LIMIT) {
         res.statusCode = 413;
-        res.end('body is too big!');
+        res.end('File is too big!');
         return;
       }
 
-      let body = '';
-      let size = 0;
+      const stream = fs.createWriteStream(filepath, {flags: 'wx'});
+      const limitStream = new LimitSizeStream({limit: FILE_LIMIT});
 
-      req.on('data', (chunk) => {
-        if (size > FILE_LIMIT) {
+      req
+          .pipe(limitStream)
+          .pipe(stream);
+
+      limitStream.on('error', (error) => {
+        if (error.code === 'LIMIT_EXCEEDED') {
           res.statusCode = 413;
-          res.end('body is too big!');
+          res.setHeader('Connection', 'close');
+          res.end('File is too big');
         } else {
-          body += chunk.toString();
-          size += chunk.length;
+          res.statusCode = 501;
+          res.setHeader('Connection', 'close');
+          res.end('Internal server error');
         }
+
+        fs.unlink(filepath, (error) => {});
       });
 
-      req.on('end', () => {
-        fs.stat(filesDirectoryPath, (err, stat) => {
-          if (err) {
-            fs.mkdir(filesDirectoryPath, (err) => {
-              if (err) throw err;
+      stream
+          .on('error', (error) => {
+            if (error.code === 'EEXIST') {
+              res.statusCode = 409;
+              res.end('File exists');
+            } else {
+              res.statusCode = 501;
+              res.end('Internal server error');
+              fs.unlink(filepath, (error) => {});
+            }
+          })
+          .on('close', (err) => {
+            res.statusCode = 201;
+            res.end('file has been saved');
+          });
 
-              writeFile(filepath, JSON.stringify(parse(body)), res);
-            });
-          } else {
-            fs.stat(filepath, (err, stats) => {
-              if (err) {
-                writeFile(filepath, JSON.stringify(parse(body)), res);
-              } else {
-                res.statusCode = 409;
-                res.end('File already existed!');
-              }
-            });
-          }
-        });
-      });
-
-      req.on('error', (err) => {
-        console.log(err.message);
+      res.on('close', () => {
+        if (res.finished) return;
+        fs.unlink(filepath, (error) => {});
       });
 
       break;

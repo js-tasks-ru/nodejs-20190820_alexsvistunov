@@ -69,31 +69,31 @@ describe('4-module-2-task', () => {
         req.end();
       });
 
-      // it('при попытке создания слишком большого файла - ошибка 413', (done) => {
-      //   const req = request(
-      //       {uri: 'http://localhost:3001/big.png', method: 'POST'},
-      //       (error, response, body) => {
-      //         if (error) return done(error);
-      //
-      //         expect(response.statusCode, 'статус код ответа сервера 413').to.equal(413);
-      //
-      //         setTimeout(() => {
-      //           expect(
-      //               fse.existsSync(path.join(filesFolder, 'big.png')),
-      //               'файл big.png не должен оставаться на диске'
-      //           ).to.be.false;
-      //           done();
-      //         }, 100);
-      //       });
-      //
-      //   req.on('error', (err) => {
-      //     // EPIPE/ECONNRESET error should occur because we try to pipe after res closed
-      //     if (!['ECONNRESET', 'EPIPE'].includes(err.code)) done(err);
-      //   });
-      //
-      //   fse.createReadStream(path.join(fixturesFolder, 'big.png'))
-      //       .pipe(req);
-      // });
+      it('при попытке создания слишком большого файла - ошибка 413', (done) => {
+        const req = request(
+            {uri: 'http://localhost:3001/big.png', method: 'POST'},
+            (error, response, body) => {
+              if (error) return done(error);
+
+              expect(response.statusCode, 'статус код ответа сервера 413').to.equal(413);
+
+              setTimeout(() => {
+                expect(
+                    fse.existsSync(path.join(filesFolder, 'big.png')),
+                    'файл big.png не должен оставаться на диске'
+                ).to.be.false;
+                done();
+              }, 100);
+            });
+
+        req.on('error', (err) => {
+          // EPIPE/ECONNRESET error should occur because we try to pipe after res closed
+          if (!['ECONNRESET', 'EPIPE'].includes(err.code)) done(err);
+        });
+
+        fse.createReadStream(path.join(fixturesFolder, 'big.png'))
+            .pipe(req);
+      });
 
       it('успешное создание файла', (done) => {
         const req = request.post('http://localhost:3001/small.png', (error, response, body) => {
