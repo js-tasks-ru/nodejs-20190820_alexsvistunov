@@ -10,4 +10,6 @@ mongoose.set('debug', false);
 
 mongoose.plugin(beautifyUnique);
 
+console.log('mongoose connect!');
+
 module.exports = mongoose.createConnection(config.mongodb.uri);
