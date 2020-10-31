@@ -75,7 +75,10 @@ describe('4-module-2-task', () => {
             (error, response, body) => {
               if (error) return done(error);
 
-              expect(response.statusCode, 'статус код ответа сервера 413').to.equal(413);
+              expect(
+                  response.statusCode,
+                  'статус код ответа сервера 413'
+              ).to.equal(413);
 
               setTimeout(() => {
                 expect(
