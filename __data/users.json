@@ -1,0 +1,14 @@
+{
+  "users": [
+    {
+      "displayName": "user1",
+      "email": "user1@mail.com",
+      "password": "123123"
+    },
+    {
+      "displayName": "user2",
+      "email": "user2@mail.com",
+      "password": "123456"
+    }
+  ]
+}
