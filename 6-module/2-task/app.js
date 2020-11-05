@@ -10,11 +10,10 @@ app.use(async (ctx, next) => {
     await next();
   } catch (err) {
     if (err.status) {
-      ctx.status = err.status;
+      ctx.response.status = err.status;
       ctx.body = {error: err.message};
     } else {
-      console.error(err);
-      ctx.status = 500;
+      ctx.response.status = 500;
       ctx.body = {error: 'Internal server error'};
     }
   }
